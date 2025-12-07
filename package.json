@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "date-fns": "^2.30.0",
-    "lunar-calendar": "^1.0.0", // <-- 版本號降到 1.0.0 或 *
+    "lunar-calendar": "^1.0.0",
     "lucide-react": "^0.292.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
