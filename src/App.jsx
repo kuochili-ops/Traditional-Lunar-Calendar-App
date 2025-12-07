@@ -25,6 +25,12 @@ const TraditionalCalendarApp = () => {
   const lunar = calendar.getLunarInfo(); // 從實例中獲取 Lunar 數據
   const solar = calendar.getSolarInfo(); // 從實例中獲取 Solar 數據
   
+  // *** 關鍵修正：檢查核心數據是否存在以防運行時崩潰 ***
+  if (!lunar || !solar) {
+      // 如果數據尚未準備好，顯示一個簡單的載入提示
+      return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">曆法數據載入中...</div>;
+  }
+  
   // 格式化數據 (使用 calendar-js 的屬性名稱)
   const year = solar.year;
   const month = solar.month;
@@ -39,9 +45,7 @@ const TraditionalCalendarApp = () => {
   const zodiac = lunar.zodiac;
   const jieQi = lunar.solarTerm; // 節氣
   
-  // *** 吉凶宜忌數據需要特殊處理 ***
-  // calendar-js 不直接提供 getDayYi/getDayJi 方法，
-  // 為了讓程式碼能跑，這裡先用模擬數據代替，部署成功後再優化這部分。
+  // *** 吉凶宜忌數據需要特殊處理 (保持模擬數據) ***
   const yi = ["祭祀", "開光", "裁衣", "交易", "立券"];
   const ji = ["嫁娶", "安葬", "入宅", "出行"];
 
@@ -51,8 +55,8 @@ const TraditionalCalendarApp = () => {
   const borderCol = "border-[#1a6b43]";
 
   return (
-    // ... (UI 結構不變，只使用上面定義的變數)
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-serif">
+      {/* 日曆紙本體容器 */}
       <div className="w-full max-w-md bg-white shadow-2xl relative overflow-hidden flex flex-col border-t-8 border-gray-200">
         
         {/* --- 頂部 Header: 年份與月份 --- */}
@@ -62,6 +66,7 @@ const TraditionalCalendarApp = () => {
              <div className={`text-4xl font-bold ${themeColor}`}>{year}</div>
           </div>
           
+          {/* 裝飾性福字 Logo */}
           <div className={`rounded-full border-2 ${borderCol} p-1 w-12 h-12 flex items-center justify-center`}>
             <span className={`${themeColor} font-bold text-xl`}>福</span>
           </div>
@@ -94,15 +99,20 @@ const TraditionalCalendarApp = () => {
 
         {/* --- 中間巨大日期區域 --- */}
         <div className="flex-1 flex items-center justify-center relative py-4">
+          {/* 左側與右側的裝飾文字 (參考圖片) */}
           <div className="absolute left-4 top-10 text-xs text-gray-400 writing-vertical-rl h-32 leading-4">
              土腰子看吉示 —— 裝模做樣
           </div>
           <div className="absolute right-4 top-10 text-xs text-gray-400 writing-vertical-rl h-40 leading-4">
              諸葛武侯擇日：天財。批日、天財日出行者...
           </div>
+
+          {/* 核心數字 */}
           <div className={`text-[180px] leading-none font-bold ${themeColor} relative select-none`} style={{ fontFamily: '"Times New Roman", serif' }}>
             {day}
+            {/* 嵌入數字內的小動物 (簡化處理) */}
             <div className="absolute bottom-10 right-8 text-white text-4xl opacity-80">
+               {/* 這裡可以用 SVG 放置生肖圖案 */}
             </div>
           </div>
         </div>
