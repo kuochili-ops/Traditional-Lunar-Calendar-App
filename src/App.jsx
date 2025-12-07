@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// 註釋掉 calendar-js 的導入，因為暫時不需要動態數據
+// *** 隔離測試：暫時註釋掉動態數據庫 ***
 // import { Calendar } from 'calendar-js'; 
 import { MapPin, Cloud, CloudRain, Sun, Moon } from 'lucide-react';
 
@@ -21,7 +21,8 @@ const TraditionalCalendarApp = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // *** 隔離測試：用靜態值取代所有曆法數據存取，找出運行時崩潰點 ***
+  // *** 隔離測試：用靜態值取代所有曆法數據存取 ***
+  // 創建 Calendar 實例的程式碼已被移除。
   
   // 格式化數據 (全部使用靜態值)
   const year = 2025; // 靜態值
@@ -174,7 +175,7 @@ const TraditionalCalendarApp = () => {
                     </div>
                 </div>
 
-                {/* 天干地支 (直接使用硬編碼值，避免 .substring 導致崩潰) */}
+                {/* 天干地支 (直接使用硬編碼值) */}
                 <div className="border-b border-green-600 p-1 flex flex-col justify-center">
                     <div className="grid grid-cols-2 gap-x-1 text-left">
                         <span className="text-gray-500">天干</span> <span className="font-bold">乙</span>
