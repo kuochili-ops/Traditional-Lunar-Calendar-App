@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "date-fns": "^2.30.0",
-    "lunar-calendar": "^1.0.0",
+    "@ilin6/lunar-calendar": "*", // <-- 最終正確的套件名稱，並使用 * 避免版本錯誤
     "lucide-react": "^0.292.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
