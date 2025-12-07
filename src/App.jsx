@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lunar, Solar } from 'lunar-calendar-javascript';
+import { Lunar, Solar } from 'lunar-calendar'; // <-- 最終正確的導入路徑
 import { MapPin, Cloud, CloudRain, Sun, Moon } from 'lucide-react';
 
 // 模擬天氣數據 (實際開發需串接 OpenWeatherMap 或中央氣象局 API)
