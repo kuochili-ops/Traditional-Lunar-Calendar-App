@@ -1,58 +1,135 @@
 import React, { useState, useEffect } from 'react';
-// *** 重新啟用 Calendar 數據庫 ***
 import { Calendar } from 'calendar-js';
-import { MapPin, Cloud, CloudRain, Sun, Moon } from 'lucide-react';
+// 導入所有需要的圖標
+import { MapPin, Cloud, CloudRain, Sun, Moon, Zap, CloudFog } from 'lucide-react';
 
-// 模擬天氣數據 (保持不變)
-const WEATHER_DATA = {
-  '台北': { temp: 24, condition: '多雲', icon: <Cloud size={20} /> },
-  '台中': { temp: 26, condition: '晴', icon: <Sun size={20} /> },
-  '高雄': { temp: 28, condition: '晴', icon: <Sun size={20} /> },
-  '東京': { temp: 15, condition: '雨', icon: <CloudRain size={20} /> },
+// --- 天氣圖標映射函數 ---
+// 根據 CWA (Wx) 的描述，回傳對應的 Lucide Icon
+const getWeatherIcon = (description) => {
+  if (!description) return <Cloud size={14} className="text-green-700"/>; // 預設
+  
+  if (description.includes('晴')) {
+    return <Sun size={14} className="text-green-700"/>;
+  } else if (description.includes('雨') || description.includes('雷')) {
+    return <CloudRain size={14} className="text-green-700"/>;
+  } else if (description.includes('多雲') || description.includes('陰')) {
+    return <Cloud size={14} className="text-green-700"/>;
+  } else if (description.includes('霧')) {
+    return <CloudFog size={14} className="text-green-700"/>;
+  }
+  return <Cloud size={14} className="text-green-700"/>; // 預設多雲
 };
 
 const TraditionalCalendarApp = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedCity, setSelectedCity] = useState('台北');
-  
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentDate(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // 1. 預設城市為 CWA 常用的「臺北市」
+  const [selectedCity, setSelectedCity] = useState('臺北市'); 
+  // 2. 新增狀態來儲存所有城市的動態天氣數據，初始為空物件 {}
+  const [weatherData, setWeatherData] = useState({}); 
+  // 3. 新增載入狀態
+  const [isLoading, setIsLoading] = useState(true); 
 
-  // --- 動態數據核心邏輯與安全檢查 ---
+  useEffect(() => {
+    // 計時器：保持右下角的時間更新
+    const timer = setInterval(() => setCurrentDate(new Date()), 1000);
+
+    // --- CWA API 獲取天氣數據的非同步函數 ---
+    const fetchWeather = async () => {
+        // CWA 鄉鎮天氣預報 API 端點 (F-C0032-005)
+        const API_URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-005";
+        // 你提供的 API 金鑰
+        const API_KEY = "CWA-A6F3874E-27F3-4AA3-AF5A-96B365798F79"; 
+        
+        const requestUrl = `${API_URL}?Authorization=${API_KEY}`;
+
+        try {
+            const response = await fetch(requestUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            
+            // --- JSON 數據解析邏輯 ---
+            // data.records.location 是包含所有縣市的陣列
+            const locations = data.records.location;
+            
+            const finalData = locations.reduce((acc, location) => {
+                const cityName = location.locationName;
+                const elements = location.weatherElement;
+                
+                // 提取當前或未來第一個時段的數據
+                const weatherElement = elements.find(e => e.elementName === 'Wx'); // 天氣現象
+                const minTempElement = elements.find(e => e.elementName === 'MinT'); // 最低溫
+                const maxTempElement = elements.find(e => e.elementName === 'MaxT'); // 最高溫
+
+                // 從第一個時間段 (time[0]) 提取參數
+                const condition = weatherElement?.time[0]?.parameter.parameterName || 'N/A';
+                const minTemp = minTempElement?.time[0]?.parameter.parameterName || '--';
+                const maxTemp = maxTempElement?.time[0]?.parameter.parameterName || '--';
+
+                acc[cityName] = {
+                    minTemp: parseInt(minTemp) || minTemp,
+                    maxTemp: parseInt(maxTemp) || maxTemp,
+                    condition: condition,
+                };
+                return acc;
+            }, {});
+
+            setWeatherData(finalData);
+            setIsLoading(false);
+
+        } catch (error) {
+            console.error("Failed to fetch weather data:", error);
+            setIsLoading(false); 
+        }
+    };
+    
+    // 首次載入時呼叫
+    fetchWeather();
+
+    return () => clearInterval(timer);
+  }, []); // 依賴項為空，只在組件掛載時運行一次
+
+  // --- 動態曆法核心邏輯與安全檢查 ---
   const calendar = new Calendar(currentDate); 
   const lunar = calendar.getLunarInfo(); 
   const solar = calendar.getSolarInfo(); 
   
-  // 核心安全檢查：如果數據未載入，顯示載入中畫面而非白屏
+  // 核心安全檢查：如果曆法數據未載入，顯示載入中畫面而非白屏
   if (!lunar || !solar) {
       return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">曆法數據載入中...</div>;
   }
   
-  // 格式化數據
+  // 曆法數據
   const year = solar.year;
   const month = solar.month;
   const day = solar.day;
   const weekDay = solar.week; 
   const weekDayChi = ['日', '一', '二', '三', '四', '五', '六'][weekDay];
   
-  // 農曆數據
   const lunarMonthChi = lunar.lunarMonthName;
   const lunarDayChi = lunar.lunarDayName;
-  // *** 安全修正: 確保 ganZhiYear 永遠是字串，以避免 .substring() 崩潰 ***
+  // 安全修正: 確保 ganZhiYear 永遠是字串，以避免 .substring() 崩潰
   const ganZhiYear = lunar.ganZhiYear || ''; 
-  const zodiac = lunar.zodiac;
   const jieQi = lunar.solarTerm; 
   
-  // *** 吉凶宜忌數據維持模擬數據 (不變) ***
+  // --- 當前天氣數據 ---
+  const currentCityWeather = weatherData[selectedCity];
+  const displayMinTemp = currentCityWeather?.minTemp || '--';
+  const displayMaxTemp = currentCityWeather?.maxTemp || '--';
+  const displayCondition = currentCityWeather?.condition || '載入中...';
+  
+  // --- UI 輔助數據 ---
   const yi = ["祭祀", "開光", "裁衣", "交易", "立券"];
   const ji = ["嫁娶", "安葬", "入宅", "出行"];
-
-  // 顏色定義 (保持不變)
   const themeColor = "text-[#1a6b43]";
   const themeBg = "bg-[#1a6b43]";
   const borderCol = "border-[#1a6b43]";
+  
+  // 如果天氣數據正在載入，顯示載入畫面
+  if (isLoading) {
+      return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">天氣數據載入中...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-serif">
@@ -77,7 +154,7 @@ const TraditionalCalendarApp = () => {
           </div>
         </div>
 
-        {/* --- 城市與即時時間 (App 特有功能) --- */}
+        {/* --- 城市與即時時間 (動態天氣顯示) --- */}
         <div className="flex justify-between items-center px-4 py-1 bg-green-50 text-xs border-b border-green-200">
           <div className="flex items-center gap-1">
             <MapPin size={14} className="text-green-700"/>
@@ -86,10 +163,13 @@ const TraditionalCalendarApp = () => {
               onChange={(e) => setSelectedCity(e.target.value)}
               className="bg-transparent font-bold text-green-800 outline-none"
             >
-              {Object.keys(WEATHER_DATA).map(city => <option key={city} value={city}>{city}</option>)}
+              {/* 城市列表從動態獲取的天氣數據中提取 */}
+              {Object.keys(weatherData).map(city => <option key={city} value={city}>{city}</option>)}
             </select>
-            <span className="text-green-800 ml-1">
-              {WEATHER_DATA[selectedCity].temp}°C {WEATHER_DATA[selectedCity].condition}
+            {/* 顯示動態天氣狀況和溫度範圍 */}
+            <span className="text-green-800 ml-1 flex items-center gap-1">
+              {getWeatherIcon(displayCondition)}
+              {displayMinTemp}°C - {displayMaxTemp}°C ({displayCondition})
             </span>
           </div>
           <div className="font-mono font-bold text-green-800">
@@ -99,20 +179,19 @@ const TraditionalCalendarApp = () => {
 
         {/* --- 中間巨大日期區域 --- */}
         <div className="flex-1 flex items-center justify-center relative py-4">
-          {/* 左側與右側的裝飾文字 (已修正 Z-index: z-10) */}
-          <div className="absolute left-4 top-10 text-xs text-gray-400 writing-vertical-rl h-32 leading-4 z-10">
+          {/* 左側與右側的裝飾文字 (已修正 Z-index: z-10，位置: top-4) */}
+          <div className="absolute left-4 **top-4** text-xs text-gray-400 writing-vertical-rl h-32 leading-4 z-10">
              土腰子看吉示 —— 裝模做樣
           </div>
-          <div className="absolute right-4 top-10 text-xs text-gray-400 writing-vertical-rl h-40 leading-4 z-10">
+          <div className="absolute right-4 **top-4** text-xs text-gray-400 writing-vertical-rl h-40 leading-4 z-10">
              諸葛武侯擇日：天財。批日、天財日出行者...
           </div>
 
           {/* 核心數字 */}
           <div className={`text-[180px] leading-none font-bold ${themeColor} relative select-none`} style={{ fontFamily: '"Times New Roman", serif' }}>
             {day}
-            {/* 嵌入數字內的小動物 (簡化處理) */}
             <div className="absolute bottom-10 right-8 text-white text-4xl opacity-80">
-               {/* 這裡可以用 SVG 放置生肖圖案 */}
+               {/* 生肖圖案 */}
             </div>
           </div>
         </div>
@@ -131,7 +210,7 @@ const TraditionalCalendarApp = () => {
                 <div className="text-xs text-gray-500 transform scale-90">節氣</div>
                 <div className={`font-bold ${themeColor}`}>{jieQi || '無節氣'}</div>
                 <div className="text-[10px] text-gray-500 leading-tight mt-1">
-                    {/* calendar-js 沒提供 Hou (候) */}
+                    {/* 候 */}
                 </div>
             </div>
 
@@ -153,7 +232,6 @@ const TraditionalCalendarApp = () => {
                     宜
                 </div>
                 <div className="flex-1 p-2 flex flex-col items-center justify-center gap-1 text-green-900 font-medium">
-                    {/* 使用模擬數據 */}
                     {yi.slice(0, 5).map((act, i) => <span key={i}>{act}</span>)}
                 </div>
                 <div className={`border-t border-green-600 py-1 ${themeColor}`}>
@@ -172,7 +250,7 @@ const TraditionalCalendarApp = () => {
                    </span>
                 </div>
 
-                {/* 吉神方位 (這裡用模擬，因為 calendar-js 屬性名不同) */}
+                {/* 吉神方位 */}
                 <div className="border-r border-b border-green-600 p-1 flex flex-col justify-center">
                     <div className={`${themeBg} text-white px-1 mb-1`}>吉神方位</div>
                     <div className="grid grid-cols-2 text-left px-2">
@@ -185,7 +263,6 @@ const TraditionalCalendarApp = () => {
                 {/* 天干地支 (動態且安全) */}
                 <div className="border-b border-green-600 p-1 flex flex-col justify-center">
                     <div className="grid grid-cols-2 gap-x-1 text-left">
-                        {/* 這裡使用 ganZhiYear 變數，它已經通過 || '' 處理，所以呼叫 substring 是安全的 */}
                         <span className="text-gray-500">天干</span> <span className="font-bold">{ganZhiYear.substring(0, 1)}</span>
                         <span className="text-gray-500">地支</span> <span className="font-bold">{ganZhiYear.substring(1, 2)}</span>
                         <span className="text-gray-500">五行</span> <span className="font-bold">火</span>
@@ -199,7 +276,6 @@ const TraditionalCalendarApp = () => {
                         八卦圖
                     </div>
                     <div className="absolute bottom-1 right-1 text-green-800 font-bold">
-                        {/* 這裡使用 day 確保數字是動態的 */}
                         今日吉數: {day + 2} {day + 8}
                     </div>
                 </div>
@@ -211,7 +287,6 @@ const TraditionalCalendarApp = () => {
                     忌
                 </div>
                 <div className="flex-1 p-2 flex flex-col items-center justify-center gap-1 text-green-900 font-medium">
-                    {/* 使用模擬數據 */}
                     {ji.slice(0, 4).map((act, i) => <span key={i}>{act}</span>)}
                 </div>
                 <div className={`border-t border-green-600 py-1 ${themeColor}`}>
