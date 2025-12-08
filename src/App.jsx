@@ -41,7 +41,8 @@ const TraditionalCalendarApp = () => {
   // 農曆數據 (使用 calendar-js 的屬性名稱)
   const lunarMonthChi = lunar.lunarMonthName;
   const lunarDayChi = lunar.lunarDayName;
-  const ganZhiYear = lunar.ganZhiYear;
+  // *** 最終修正: 確保 ganZhiYear 永遠是字串，以避免 .substring() 崩潰 ***
+  const ganZhiYear = lunar.ganZhiYear || ''; // 使用 || '' 來確保 fallback 到空字串
   const zodiac = lunar.zodiac;
   const jieQi = lunar.solarTerm; // 節氣
   
@@ -185,6 +186,7 @@ const TraditionalCalendarApp = () => {
                 {/* 天干地支 (恢復動態) */}
                 <div className="border-b border-green-600 p-1 flex flex-col justify-center">
                     <div className="grid grid-cols-2 gap-x-1 text-left">
+                        {/* 這裡的安全檢查已經透過上面的 ganZhiYear = lunar.ganZhiYear || ''; 完成 */}
                         <span className="text-gray-500">天干</span> <span className="font-bold">{ganZhiYear.substring(0, 1)}</span>
                         <span className="text-gray-500">地支</span> <span className="font-bold">{ganZhiYear.substring(1, 2)}</span>
                         <span className="text-gray-500">五行</span> <span className="font-bold">火</span>
