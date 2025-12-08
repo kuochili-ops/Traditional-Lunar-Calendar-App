@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-// *** 隔離測試：暫時註釋掉動態數據庫 ***
-// import { Calendar } from 'calendar-js'; 
+// *** 重新導入新的套件 calendar-js ***
+import { Calendar } from 'calendar-js';
 import { MapPin, Cloud, CloudRain, Sun, Moon } from 'lucide-react';
 
 // 模擬天氣數據 (保持不變)
@@ -16,29 +16,36 @@ const TraditionalCalendarApp = () => {
   const [selectedCity, setSelectedCity] = useState('台北');
   
   useEffect(() => {
-    // 保持計時器運行，只為了更新右下角的時間
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // *** 隔離測試：用靜態值取代所有曆法數據存取 ***
-  // 創建 Calendar 實例的程式碼已被移除。
+  // *** 獲取農曆與曆法資訊 - 核心邏輯變更 ***
+  const calendar = new Calendar(currentDate); // 創建 Calendar 實例
+  const lunar = calendar.getLunarInfo(); // 從實例中獲取 Lunar 數據
+  const solar = calendar.getSolarInfo(); // 從實例中獲取 Solar 數據
   
-  // 格式化數據 (全部使用靜態值)
-  const year = 2025; // 靜態值
-  const month = 12; // 靜態值
-  const day = 8; // 靜態值
-  const weekDay = 1; // 靜態值 (週一)
+  // *** 核心安全檢查：防止在數據載入前應用程式崩潰 ***
+  // 如果 lunar 或 solar 為 null/undefined，則暫時渲染載入畫面。
+  if (!lunar || !solar) {
+      return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">曆法數據載入中...</div>;
+  }
+  
+  // 格式化數據 (使用 calendar-js 的屬性名稱)
+  const year = solar.year;
+  const month = solar.month;
+  const day = solar.day;
+  const weekDay = solar.week; // 0-6
   const weekDayChi = ['日', '一', '二', '三', '四', '五', '六'][weekDay];
   
-  // 農曆數據 (全部使用靜態值)
-  const lunarMonthChi = '十'; // 靜態值
-  const lunarDayChi = '初八'; // 靜態值
-  const ganZhiYear = '乙巳'; // 靜態值
-  const zodiac = '蛇'; // 靜態值
-  const jieQi = '大雪'; // 靜態值
+  // 農曆數據 (使用 calendar-js 的屬性名稱)
+  const lunarMonthChi = lunar.lunarMonthName;
+  const lunarDayChi = lunar.lunarDayName;
+  const ganZhiYear = lunar.ganZhiYear;
+  const zodiac = lunar.zodiac;
+  const jieQi = lunar.solarTerm; // 節氣
   
-  // *** 吉凶宜忌數據維持模擬數據 (不變) ***
+  // *** 吉凶宜忌數據需要特殊處理 (保持模擬數據) ***
   const yi = ["祭祀", "開光", "裁衣", "交易", "立券"];
   const ji = ["嫁娶", "安葬", "入宅", "出行"];
 
@@ -92,11 +99,11 @@ const TraditionalCalendarApp = () => {
 
         {/* --- 中間巨大日期區域 --- */}
         <div className="flex-1 flex items-center justify-center relative py-4">
-          {/* 左側與右側的裝飾文字 (參考圖片) */}
-          <div className="absolute left-4 top-10 text-xs text-gray-400 writing-vertical-rl h-32 leading-4">
+          {/* 左側與右側的裝飾文字 (修正 z-index，使其顯示在數字上方) */}
+          <div className="absolute left-4 top-10 text-xs text-gray-400 writing-vertical-rl h-32 leading-4 z-10">
              土腰子看吉示 —— 裝模做樣
           </div>
-          <div className="absolute right-4 top-10 text-xs text-gray-400 writing-vertical-rl h-40 leading-4">
+          <div className="absolute right-4 top-10 text-xs text-gray-400 writing-vertical-rl h-40 leading-4 z-10">
              諸葛武侯擇日：天財。批日、天財日出行者...
           </div>
 
@@ -175,11 +182,11 @@ const TraditionalCalendarApp = () => {
                     </div>
                 </div>
 
-                {/* 天干地支 (直接使用硬編碼值) */}
+                {/* 天干地支 (恢復動態) */}
                 <div className="border-b border-green-600 p-1 flex flex-col justify-center">
                     <div className="grid grid-cols-2 gap-x-1 text-left">
-                        <span className="text-gray-500">天干</span> <span className="font-bold">乙</span>
-                        <span className="text-gray-500">地支</span> <span className="font-bold">巳</span>
+                        <span className="text-gray-500">天干</span> <span className="font-bold">{ganZhiYear.substring(0, 1)}</span>
+                        <span className="text-gray-500">地支</span> <span className="font-bold">{ganZhiYear.substring(1, 2)}</span>
                         <span className="text-gray-500">五行</span> <span className="font-bold">火</span>
                         <span className="text-gray-500">星宿</span> <span className="font-bold">危</span>
                     </div>
@@ -191,6 +198,7 @@ const TraditionalCalendarApp = () => {
                         八卦圖
                     </div>
                     <div className="absolute bottom-1 right-1 text-green-800 font-bold">
+                        {/* 這裡使用 day 確保數字是動態的 */}
                         今日吉數: {day + 2} {day + 8}
                     </div>
                 </div>
