@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-// *** 重新導入新的套件 calendar-js ***
-import { Calendar } from 'calendar-js';
+// *** 隔離測試：暫時註釋掉動態數據庫 ***
+// import { Calendar } from 'calendar-js'; 
 import { MapPin, Cloud, CloudRain, Sun, Moon } from 'lucide-react';
 
 // 模擬天氣數據 (保持不變)
@@ -16,37 +16,28 @@ const TraditionalCalendarApp = () => {
   const [selectedCity, setSelectedCity] = useState('台北');
   
   useEffect(() => {
+    // 保持計時器運行，只為了更新右下角的時間
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // *** 獲取農曆與曆法資訊 - 核心邏輯變更 ***
-  const calendar = new Calendar(currentDate); // 創建 Calendar 實例
-  const lunar = calendar.getLunarInfo(); // 從實例中獲取 Lunar 數據
-  const solar = calendar.getSolarInfo(); // 從實例中獲取 Solar 數據
+  // *** 隔離測試：用靜態值取代所有曆法數據存取 ***
   
-  // *** 核心安全檢查：防止在數據載入前應用程式崩潰 ***
-  // 如果 lunar 或 solar 為 null/undefined，則暫時渲染載入畫面。
-  if (!lunar || !solar) {
-      return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">曆法數據載入中...</div>;
-  }
-  
-  // 格式化數據 (使用 calendar-js 的屬性名稱)
-  const year = solar.year;
-  const month = solar.month;
-  const day = solar.day;
-  const weekDay = solar.week; // 0-6
+  // 格式化數據 (全部使用靜態值)
+  const year = 2025; // 靜態值
+  const month = 12; // 靜態值
+  const day = 8; // 靜態值
+  const weekDay = 1; // 靜態值 (週一)
   const weekDayChi = ['日', '一', '二', '三', '四', '五', '六'][weekDay];
   
-  // 農曆數據 (使用 calendar-js 的屬性名稱)
-  const lunarMonthChi = lunar.lunarMonthName;
-  const lunarDayChi = lunar.lunarDayName;
-  // *** 最終修正: 確保 ganZhiYear 永遠是字串，以避免 .substring() 崩潰 ***
-  const ganZhiYear = lunar.ganZhiYear || ''; // 使用 || '' 來確保 fallback 到空字串
-  const zodiac = lunar.zodiac;
-  const jieQi = lunar.solarTerm; // 節氣
+  // 農曆數據 (全部使用靜態值)
+  const lunarMonthChi = '十'; // 靜態值
+  const lunarDayChi = '初八'; // 靜態值
+  const ganZhiYear = '乙巳'; // 靜態值
+  const zodiac = '蛇'; // 靜態值
+  const jieQi = '大雪'; // 靜態值
   
-  // *** 吉凶宜忌數據需要特殊處理 (保持模擬數據) ***
+  // *** 吉凶宜忌數據維持模擬數據 (不變) ***
   const yi = ["祭祀", "開光", "裁衣", "交易", "立券"];
   const ji = ["嫁娶", "安葬", "入宅", "出行"];
 
@@ -183,10 +174,9 @@ const TraditionalCalendarApp = () => {
                     </div>
                 </div>
 
-                {/* 天干地支 (恢復動態) */}
+                {/* 天干地支 (靜態，使用 substring 是安全的，因為 ganZhiYear 是靜態 '乙巳') */}
                 <div className="border-b border-green-600 p-1 flex flex-col justify-center">
                     <div className="grid grid-cols-2 gap-x-1 text-left">
-                        {/* 這裡的安全檢查已經透過上面的 ganZhiYear = lunar.ganZhiYear || ''; 完成 */}
                         <span className="text-gray-500">天干</span> <span className="font-bold">{ganZhiYear.substring(0, 1)}</span>
                         <span className="text-gray-500">地支</span> <span className="font-bold">{ganZhiYear.substring(1, 2)}</span>
                         <span className="text-gray-500">五行</span> <span className="font-bold">火</span>
@@ -200,7 +190,6 @@ const TraditionalCalendarApp = () => {
                         八卦圖
                     </div>
                     <div className="absolute bottom-1 right-1 text-green-800 font-bold">
-                        {/* 這裡使用 day 確保數字是動態的 */}
                         今日吉數: {day + 2} {day + 8}
                     </div>
                 </div>
