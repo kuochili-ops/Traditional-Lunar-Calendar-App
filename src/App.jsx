@@ -8,6 +8,7 @@ import { MapPin, Cloud, CloudRain, Sun, Moon, Zap, CloudFog } from 'lucide-react
 const getWeatherIcon = (description) => {
   if (!description) return <Cloud size={14} className="text-green-700"/>; // 預設
   
+  // 檢查關鍵字來決定圖標
   if (description.includes('晴')) {
     return <Sun size={14} className="text-green-700"/>;
   } else if (description.includes('雨') || description.includes('雷')) {
@@ -24,16 +25,16 @@ const TraditionalCalendarApp = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   // 1. 預設城市為 CWA 常用的「臺北市」
   const [selectedCity, setSelectedCity] = useState('臺北市'); 
-  // 2. 新增狀態來儲存所有城市的動態天氣數據，初始為空物件 {}
+  // 2. 儲存所有城市的動態天氣數據，初始為空物件 {}
   const [weatherData, setWeatherData] = useState({}); 
-  // 3. 新增載入狀態
+  // 3. 載入狀態
   const [isLoading, setIsLoading] = useState(true); 
 
   useEffect(() => {
     // 計時器：保持右下角的時間更新
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
 
-    // --- CWA API 獲取天氣數據的非同步函數 ---
+    // --- CWA API 獲取天氣數據的非同步函數 (高安全性版本) ---
     const fetchWeather = async () => {
         // CWA 鄉鎮天氣預報 API 端點 (F-C0032-005)
         const API_URL = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-005";
@@ -45,27 +46,36 @@ const TraditionalCalendarApp = () => {
         try {
             const response = await fetch(requestUrl);
             if (!response.ok) {
+                // 即使 HTTP 錯誤，也要解除載入狀態
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
             
-            // --- JSON 數據解析邏輯 ---
-            // data.records.location 是包含所有縣市的陣列
-            const locations = data.records.location;
+            // --- JSON 數據解析邏輯 (極致安全防護) ---
+            // 確保路徑存在，否則設為空陣列
+            const locations = data?.records?.location || []; 
             
+            if (locations.length === 0) {
+                console.error("CWA API returned no location data.");
+                setWeatherData({}); 
+                setIsLoading(false);
+                return; 
+            }
+            
+            // 使用 reduce 安全地轉換數據格式
             const finalData = locations.reduce((acc, location) => {
                 const cityName = location.locationName;
                 const elements = location.weatherElement;
                 
-                // 提取當前或未來第一個時段的數據
-                const weatherElement = elements.find(e => e.elementName === 'Wx'); // 天氣現象
-                const minTempElement = elements.find(e => e.elementName === 'MinT'); // 最低溫
-                const maxTempElement = elements.find(e => e.elementName === 'MaxT'); // 最高溫
+                // 使用 ?. 確保在任何層級遺失數據時都不崩潰
+                const weatherElement = elements?.find(e => e.elementName === 'Wx');
+                const minTempElement = elements?.find(e => e.elementName === 'MinT');
+                const maxTempElement = elements?.find(e => e.elementName === 'MaxT');
 
-                // 從第一個時間段 (time[0]) 提取參數
-                const condition = weatherElement?.time[0]?.parameter.parameterName || 'N/A';
-                const minTemp = minTempElement?.time[0]?.parameter.parameterName || '--';
-                const maxTemp = maxTempElement?.time[0]?.parameter.parameterName || '--';
+                // 從第一個時間段 (time[0]) 提取數據，並使用 || 設置預設值
+                const condition = weatherElement?.time[0]?.parameter?.parameterName || 'N/A';
+                const minTemp = minTempElement?.time[0]?.parameter?.parameterName || '--';
+                const maxTemp = maxTempElement?.time[0]?.parameter?.parameterName || '--';
 
                 acc[cityName] = {
                     minTemp: parseInt(minTemp) || minTemp,
@@ -88,14 +98,14 @@ const TraditionalCalendarApp = () => {
     fetchWeather();
 
     return () => clearInterval(timer);
-  }, []); // 依賴項為空，只在組件掛載時運行一次
+  }, []); 
 
   // --- 動態曆法核心邏輯與安全檢查 ---
   const calendar = new Calendar(currentDate); 
   const lunar = calendar.getLunarInfo(); 
   const solar = calendar.getSolarInfo(); 
   
-  // 核心安全檢查：如果曆法數據未載入，顯示載入中畫面而非白屏
+  // 核心安全檢查 (防白螢幕 1): 曆法數據載入檢查
   if (!lunar || !solar) {
       return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">曆法數據載入中...</div>;
   }
@@ -109,11 +119,12 @@ const TraditionalCalendarApp = () => {
   
   const lunarMonthChi = lunar.lunarMonthName;
   const lunarDayChi = lunar.lunarDayName;
-  // 安全修正: 確保 ganZhiYear 永遠是字串，以避免 .substring() 崩潰
+  // 安全修正 (防白螢幕 2): 確保 ganZhiYear 永遠是字串，以避免 .substring() 崩潰
   const ganZhiYear = lunar.ganZhiYear || ''; 
   const jieQi = lunar.solarTerm; 
   
-  // --- 當前天氣數據 ---
+  // --- 當前天氣數據 (安全提取) ---
+  // 使用 ?. 確保即使 weatherData 裡沒有該城市也不會崩潰
   const currentCityWeather = weatherData[selectedCity];
   const displayMinTemp = currentCityWeather?.minTemp || '--';
   const displayMaxTemp = currentCityWeather?.maxTemp || '--';
@@ -126,7 +137,7 @@ const TraditionalCalendarApp = () => {
   const themeBg = "bg-[#1a6b43]";
   const borderCol = "border-[#1a6b43]";
   
-  // 如果天氣數據正在載入，顯示載入畫面
+  // 核心安全檢查 (防白螢幕 3): 天氣數據載入檢查
   if (isLoading) {
       return <div className="min-h-screen flex items-center justify-center font-serif text-gray-500">天氣數據載入中...</div>;
   }
@@ -180,10 +191,10 @@ const TraditionalCalendarApp = () => {
         {/* --- 中間巨大日期區域 --- */}
         <div className="flex-1 flex items-center justify-center relative py-4">
           {/* 左側與右側的裝飾文字 (已修正 Z-index: z-10，位置: top-4) */}
-          <div className="absolute left-4 **top-4** text-xs text-gray-400 writing-vertical-rl h-32 leading-4 z-10">
+          <div className="absolute left-4 top-4 text-xs text-gray-400 writing-vertical-rl h-32 leading-4 z-10">
              土腰子看吉示 —— 裝模做樣
           </div>
-          <div className="absolute right-4 **top-4** text-xs text-gray-400 writing-vertical-rl h-40 leading-4 z-10">
+          <div className="absolute right-4 top-4 text-xs text-gray-400 writing-vertical-rl h-40 leading-4 z-10">
              諸葛武侯擇日：天財。批日、天財日出行者...
           </div>
 
@@ -232,6 +243,7 @@ const TraditionalCalendarApp = () => {
                     宜
                 </div>
                 <div className="flex-1 p-2 flex flex-col items-center justify-center gap-1 text-green-900 font-medium">
+                    {/* 使用模擬數據 */}
                     {yi.slice(0, 5).map((act, i) => <span key={i}>{act}</span>)}
                 </div>
                 <div className={`border-t border-green-600 py-1 ${themeColor}`}>
@@ -287,6 +299,7 @@ const TraditionalCalendarApp = () => {
                     忌
                 </div>
                 <div className="flex-1 p-2 flex flex-col items-center justify-center gap-1 text-green-900 font-medium">
+                    {/* 使用模擬數據 */}
                     {ji.slice(0, 4).map((act, i) => <span key={i}>{act}</span>)}
                 </div>
                 <div className={`border-t border-green-600 py-1 ${themeColor}`}>
